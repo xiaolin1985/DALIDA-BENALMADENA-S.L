@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Inventory Pro | 护眼模式</title>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            /* 柔和护眼色谱 */
+            --ios-bg: #E9ECEF;          /* 极低饱和度的背景 */
+            --ios-card: #F8F9FA;        /* 柔白色卡片 */
+            --ios-blue: #4A6D8C;        /* 降噪深蓝色 */
+            --ios-green: #6B8E6B;       /* 鼠尾草绿 */
+            --ios-red: #D68C8C;         /* 柔和豆沙红 */
+            --ios-text: #2D3436;        /* 深灰而非全黑 */
+            --ios-secondary: #7F8C8D;   /* 辅助文字色 */
+            --ios-input-bg: #DDE1E4;    /* 输入框背景 */
+            --shadow: 0 4px 12px rgba(0,0,0,0.03);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", sans-serif;
+            background-color: var(--ios-bg);
+            margin: 0;
+            padding: 30px 20px;
+            color: var(--ios-text);
+            display: flex;
+            justify-content: center;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 960px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* 顶部导航 */
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 10px;
+        }
+        .header-bar h1 { font-size: 26px; font-weight: 700; color: var(--ios-text); margin: 0; }
+
+        /* 统一按钮 - 柔和质感 */
+        .btn {
+            border: none;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 20px;
+            background: var(--ios-input-bg);
+            color: var(--ios-text);
+        }
+        .btn:active { transform: scale(0.96); opacity: 0.9; }
+        .btn-blue { background: var(--ios-blue); color: #FFF; }
+        .btn-green { background: var(--ios-green); color: #FFF; }
+        .btn-outline { background: transparent; border: 1.5px solid var(--ios-blue); color: var(--ios-blue); }
+
+        /* 仪表盘 */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        .dash-card {
+            background: var(--ios-card);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            text-align: center;
+        }
+        .dash-label { font-size: 11px; color: var(--ios-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+        .dash-value { font-size: 26px; font-weight: 700; color: var(--ios-blue); }
+
+        /* 扫码操作区 */
+        .main-action {
+            background: var(--ios-card);
+            padding: 30px;
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .input-group { flex: 1; }
+        .input-group label { display: block; font-size: 12px; color: var(--ios-secondary); margin-bottom: 8px; font-weight: 600; }
+        
+        #scanInput {
+            width: 100%;
+            height: 52px;
+            background: var(--ios-input-bg);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            font-size: 18px;
+            text-align: center;
+            color: var(--ios-text);
+            box-sizing: border-box;
+            transition: 0.3s;
+        }
+        #scanInput:focus { background: #FFF; border-color: var(--ios-blue); outline: none; }
+
+        /* 列表区域 */
+        .list-card {
+            background: var(--ios-card);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: rgba(0,0,0,0.02); padding: 18px; text-align: left; font-size: 12px; color: var(--ios-secondary); }
+        td { padding: 20px 18px; font-size: 15px; border-bottom: 1px solid rgba(0,0,0,0.03); }
+        
+        .status-tag {
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .st-pending { background: #E0E0E0; color: #777; }
+        .st-ok { background: #E8F0E8; color: var(--ios-green); }
+        .st-err { background: #F8E8E8; color: var(--ios-red); }
+
+        /* 弹窗核心 - 更加圆润柔和 */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(45, 52, 70, 0.5); backdrop-filter: blur(12px);
+            display: none; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal {
+            background: rgba(255, 255, 255, 0.95);
+            width: 380px;
+            border-radius: 32px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        }
+        .modal h3 { margin: 0 0 10px 0; font-size: 18px; }
+        .price-hero { margin: 25px 0; font-size: 44px; font-weight: 800; color: var(--ios-blue); letter-spacing: -2px; }
+        #qtyInput { 
+            width: 120px; height: 60px; border-radius: 16px; border: 2px solid var(--ios-input-bg);
+            font-size: 28px; text-align: center; margin-bottom: 20px; background: #FAFAFA;
+        }
+        #qtyInput:focus { border-color: var(--ios-blue); outline: none; }
+
+        #fileInput { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header-bar">
+        <h1>盘点系统 <span>Pro</span></h1>
+        <div style="display: flex; gap: 12px;">
+            <button class="btn" onclick="resetData()">重置</button>
+            <label for="fileInput" class="btn btn-outline">导入库存</label>
+            <input type="file" id="fileInput" accept=".xlsx, .xls" />
+            <button class="btn btn-green" onclick="exportMismatch()">导出报告</button>
+        </div>
+    </div>
+
+    <div class="main-action">
+        <div class="input-group">
+            <label>扫描条码录入</label>
+            <input type="text" id="scanInput" placeholder="点击激活扫码枪..." disabled />
+        </div>
+        <button id="undoBtn" class="btn" style="height: 52px; padding: 0 25px;" onclick="undoStep()" disabled>↩ 后退</button>
+    </div>
+
+    <div class="dashboard">
+        <div class="dash-card">
+            <div class="dash-label">SKU 总数</div>
+            <div class="dash-value" id="stat-total">-</div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-label">已盘点</div>
+            <div class="dash-value" id="stat-done">-</div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-label">差异项</div>
+            <div class="dash-value" style="color:var(--ios-red)" id="stat-err">-</div>
+        </div>
+    </div>
+
+    <div class="list-card">
+        <table>
+            <thead>
+                <tr><th>商品详情</th><th>单价</th><th style="text-align:center">应有</th><th style="text-align:center">实盘</th><th>状态</th></tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr><td colspan="5" style="text-align:center; padding:60px; color:var(--ios-secondary)">请导入 Excel 开始工作</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal-overlay" id="qtyModal">
+    <div class="modal">
+        <h3 id="mName">-</h3>
+        <div style="font-size: 13px; color: var(--ios-secondary);">零售单价</div>
+        <div class="price-hero" id="mPrice">¥0.00</div>
+        <div style="margin-bottom: 15px; font-weight: 600; color: var(--ios-secondary);">
+            目前实盘: <span id="mCurr" style="color:var(--ios-blue)">0</span>
+        </div>
+        <input type="number" id="qtyInput" placeholder="1" />
+        <div style="font-size: 12px; color: var(--ios-secondary); margin-bottom: 25px;">按回车默认 +1 | 输入 -1 为减</div>
+        <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 15px;">
+            <button class="btn" onclick="closeModal()">取消</button>
+            <button class="btn btn-blue" onclick="confirmQty()">确认录入</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let inventoryData = [];
+    let history = [];
+    let currentIdx = -1;
+
+    function saveHistory() {
+        history.push(JSON.stringify(inventoryData));
+        if (history.length > 11) history.shift();
+        updateUndoBtn();
+    }
+
+    function undoStep() {
+        if (history.length <= 1) return;
+        history.pop();
+        inventoryData = JSON.parse(history[history.length - 1]);
+        render();
+        updateStats();
+        updateUndoBtn();
+    }
+
+    function updateUndoBtn() {
+        const b = document.getElementById('undoBtn');
+        b.disabled = history.length <= 1;
+        b.innerText = history.length > 1 ? `↩ 后退(${history.length-1})` : "↩ 后退";
+    }
+
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            inventoryData = json.map(i => ({
+                barcode: String(i['条码'] || '').trim(),
+                name: String(i['商品名'] || '未名商品'),
+                expected: parseInt(i['应有数量'] || 0),
+                price: parseFloat(i['售价'] || 0).toFixed(2),
+                actual: 0, scanned: false
+            }));
+            history = [];
+            saveHistory();
+            render();
+            updateStats();
+            document.getElementById('scanInput').disabled = false;
+            document.getElementById('scanInput').focus();
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    function render() {
+        const tb = document.getElementById('tableBody');
+        tb.innerHTML = '';
+        inventoryData.forEach(i => {
+            const st = !i.scanned ? 'pending' : (i.actual === i.expected ? 'ok' : 'err');
+            const row = `<tr>
+                <td><div style="font-weight:600">${i.name}</div><div style="font-size:11px;color:#999">${i.barcode}</div></td>
+                <td style="color:var(--ios-blue); font-weight:600">¥${i.price}</td>
+                <td style="text-align:center">${i.expected}</td>
+                <td style="text-align:center;font-weight:700">${i.scanned?i.actual:'-'}</td>
+                <td><span class="status-tag st-${st}">${st==='pending'?'待盘':(st==='ok'?'正常':'差异')}</span></td>
+            </tr>`;
+            tb.insertAdjacentHTML('beforeend', row);
+        });
+    }
+
+    document.getElementById('scanInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+            const idx = inventoryData.findIndex(i => i.barcode === e.target.value.trim());
+            if (idx !== -1) {
+                currentIdx = idx;
+                const i = inventoryData[idx];
+                document.getElementById('mName').innerText = i.name;
+                document.getElementById('mPrice').innerText = '¥' + i.price;
+                document.getElementById('mCurr').innerText = i.actual;
+                document.getElementById('qtyModal').style.display = 'flex';
+                document.getElementById('qtyInput').value = '';
+                document.getElementById('qtyInput').focus();
+            } else { alert("找不到条码"); }
+            e.target.value = '';
+        }
+    });
+
+    function confirmQty() {
+        const val = document.getElementById('qtyInput').value === '' ? 1 : parseInt(document.getElementById('qtyInput').value);
+        const item = inventoryData[currentIdx];
+        if (item.actual + val < 0) return alert("不能低于0");
+        item.actual += val;
+        item.scanned = true;
+        saveHistory();
+        render();
+        updateStats();
+        closeModal();
+    }
+
+    function updateStats() {
+        document.getElementById('stat-total').innerText = inventoryData.length;
+        document.getElementById('stat-done').innerText = inventoryData.filter(i => i.scanned).length;
+        document.getElementById('stat-err').innerText = inventoryData.filter(i => i.scanned && i.actual !== i.expected).length;
+    }
+
+    function closeModal() { document.getElementById('qtyModal').style.display = 'none'; document.getElementById('scanInput').focus(); }
+    function resetData() { if(confirm("重置所有数据？")) location.reload(); }
+    
+    function exportMismatch() {
+        const list = inventoryData.filter(i => i.scanned && i.actual !== i.expected);
+        if(!list.length) return alert("没有异常数据");
+        const ws = XLSX.utils.json_to_sheet(list.map(i => ({ "条码": i.barcode, "商品名": i.name, "应有": i.expected, "实盘": i.actual, "差异": i.actual - i.expected })));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Report");
+        XLSX.writeFile(wb, "差异报告.xlsx");
+    }
+
+    document.getElementById('qtyInput').addEventListener('keydown', e => { if(e.key==='Enter') confirmQty(); if(e.key==='Escape') closeModal(); });
+</script>
+
+</body>
+</html>
