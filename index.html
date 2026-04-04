@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>盘点助手 Pro</title>
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
             --ios-bg: #F2F2F7;
@@ -16,11 +16,16 @@
         body {
             font-family: -apple-system, sans-serif;
             background-color: var(--ios-bg); margin: 0; padding: 15px; color: #1C1C1E;
-            -webkit-user-select: none; /* 防止长按弹出选择框 */
+            -webkit-user-select: none;
         }
 
         .app-container { max-width: 500px; margin: 0 auto; }
         
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .top-bar h2 { margin: 0; font-size: 22px; }
+        .btn-link { border: none; background: none; color: var(--ios-blue); font-weight: 600; font-size: 15px; padding: 5px; cursor: pointer; }
+        .btn-reset { color: var(--ios-red); }
+
         .scan-box {
             background: var(--ios-card); padding: 15px; border-radius: 15px; margin-bottom: 15px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05); text-align: center;
@@ -28,6 +33,7 @@
         #scanInput {
             width: 90%; height: 48px; border: 2px solid var(--ios-blue);
             border-radius: 12px; font-size: 18px; text-align: center; outline: none;
+            background: #fff;
         }
 
         .list-card { background: var(--ios-card); border-radius: 15px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
@@ -35,65 +41,64 @@
         th { background: #F9F9F9; padding: 12px; font-size: 12px; color: #8E8E93; text-align: left; }
         td { padding: 12px; font-size: 14px; border-bottom: 0.5px solid #E5E5EA; }
 
+        .row-diff { background-color: #FFF2F2; }
+        .text-diff { color: var(--ios-red); font-weight: bold; }
+
+        /* 弹窗样式 */
         .modal-overlay {
             position: fixed; top:0; left:0; right:0; bottom:0;
             background: rgba(0,0,0,0.4); backdrop-filter: blur(5px);
             display: none; justify-content: center; align-items: flex-end; z-index: 1000;
         }
-        
         .modal {
             background: var(--ios-bg); width: 100%; border-radius: 25px 25px 0 0;
             padding: 25px 20px; box-sizing: border-box; animation: slideUp 0.2s ease-out;
         }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        .info-header { text-align: center; margin-bottom: 10px; }
-        .product-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
-        .product-price { font-size: 28px; font-weight: 800; color: var(--ios-blue); margin-bottom: 5px; }
-        .display-label { font-size: 12px; color: #8E8E93; margin-top: 10px; }
-        
-        /* 数量显示区 */
         .display-val { 
             font-size: 64px; font-weight: 800; color: #1C1C1E; 
-            background: #FFF; border-radius: 16px; margin: 5px 0; padding: 10px;
+            background: #FFF; border-radius: 16px; margin: 10px 0; padding: 10px;
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); min-height: 80px;
             display: flex; align-items: center; justify-content: center;
         }
 
         .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 15px; }
-        
         .key {
             background: #FFF; border: none; border-radius: 15px;
             padding: 18px 0; font-size: 26px; font-weight: 600; color: #000;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.08); -webkit-tap-highlight-color: transparent;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
         }
         .key:active { background: #D1D1D6; }
-        .key.red { color: var(--ios-red); font-size: 20px; }
-        .key.gray { font-size: 18px; background: #E5E5EA; }
-
         .btn-group { display: flex; gap: 12px; margin-top: 20px; }
-        .action-btn { 
-            flex: 1; padding: 18px; border-radius: 15px; border: none; 
-            font-size: 18px; font-weight: 700;
-        }
+        .action-btn { flex: 1; padding: 18px; border-radius: 15px; border: none; font-size: 18px; font-weight: 700; }
     </style>
 </head>
 <body>
 
 <div class="app-container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h2 style="margin:0">盘点助手</h2>
-        <button onclick="document.getElementById('fileInput').click()" style="border:none; background:none; color:var(--ios-blue); font-weight:600;">导入Excel</button>
+    <div class="top-bar">
+        <h2>盘点助手</h2>
+        <div>
+            <button class="btn-link btn-reset" onclick="resetAll()">重置全部</button>
+            <button class="btn-link" onclick="document.getElementById('fileInput').click()">导入Excel</button>
+        </div>
         <input type="file" id="fileInput" hidden accept=".xlsx,.xls">
     </div>
 
     <div class="scan-box">
-        <input type="text" id="scanInput" placeholder="点击此处开始扫码" autocomplete="off">
+        <input type="text" id="scanInput" placeholder="已就绪，请扫码..." autocomplete="off">
     </div>
 
     <div class="list-card">
         <table>
-            <thead><tr><th>商品信息</th><th style="text-align:center">应有</th><th style="text-align:center">实盘</th></tr></thead>
+            <thead>
+                <tr>
+                    <th width="50%">商品信息</th>
+                    <th width="25%" style="text-align:center">应有</th>
+                    <th width="25%" style="text-align:center">实盘</th>
+                </tr>
+            </thead>
             <tbody id="tableBody"></tbody>
         </table>
     </div>
@@ -101,13 +106,11 @@
 
 <div class="modal-overlay" id="qtyModal">
     <div class="modal">
-        <div class="info-header">
-            <div class="product-name" id="mName">商品加载中...</div>
-            <div class="product-price" id="mPrice">¥0.00</div>
-            <div class="display-label">确认录入数量</div>
+        <div style="text-align:center">
+            <div id="mName" style="font-size:20px; font-weight:700;">-</div>
+            <div id="mPrice" style="font-size:28px; font-weight:800; color:var(--ios-blue);">¥0.00</div>
             <div class="display-val" id="valDisplay">0</div>
         </div>
-
         <div class="numpad">
             <button class="key" onclick="pressNum(1)">1</button>
             <button class="key" onclick="pressNum(2)">2</button>
@@ -118,11 +121,10 @@
             <button class="key" onclick="pressNum(7)">7</button>
             <button class="key" onclick="pressNum(8)">8</button>
             <button class="key" onclick="pressNum(9)">9</button>
-            <button class="key red" onclick="clearVal()">清除</button>
+            <button class="key" style="color:var(--ios-red)" onclick="clearVal()">清除</button>
             <button class="key" onclick="pressNum(0)">0</button>
-            <button class="key gray" onclick="adjust(-1)">修正-1</button>
+            <button class="key" style="background:#E5E5EA" onclick="adjust(-1)">-1</button>
         </div>
-
         <div class="btn-group">
             <button class="action-btn" style="background:#E5E5EA;" onclick="closeModal()">取消</button>
             <button class="action-btn" style="background:var(--ios-blue); color:#FFF" onclick="confirmEntry()">确认录入</button>
@@ -134,10 +136,25 @@
     let inventory = [];
     let currentIdx = -1;
     let currentInput = "0";
-    let isFirstKey = true; // 标记是否为第一次按键，用于覆盖默认值
+    let isFirstKey = true;
 
-    // 导入 Excel
+    const scanInput = document.getElementById('scanInput');
+
+    // 页面加载自动聚焦
+    window.onload = () => scanInput.focus();
+
+    function resetAll() {
+        if (confirm("确定要清空所有数据吗？")) {
+            inventory = [];
+            document.getElementById('fileInput').value = '';
+            render();
+            scanInput.focus();
+        }
+    }
+
     document.getElementById('fileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
         const reader = new FileReader();
         reader.onload = (evt) => {
             const data = new Uint8Array(evt.target.result);
@@ -151,85 +168,70 @@
                 actual: 0
             }));
             render();
+            
+            // 【核心优化】：导入成功后，延迟 300ms 强制聚焦扫码框
+            // 延迟是为了避开文件选择框关闭时的系统动画干扰
+            setTimeout(() => {
+                scanInput.focus();
+                scanInput.placeholder = "数据已导入，请扫码...";
+            }, 300);
         };
-        reader.readAsArrayBuffer(e.target.files[0]);
+        reader.readAsArrayBuffer(file);
     });
 
     function render() {
         const tb = document.getElementById('tableBody');
-        tb.innerHTML = inventory.map((i, idx) => `
-            <tr>
-                <td><b>${i.name}</b><br><small style="color:#8E8E93">${i.barcode}</small></td>
-                <td align="center">${i.expect}</td>
-                <td align="center" style="color:var(--ios-blue); font-weight:bold">${i.actual}</td>
-            </tr>
-        `).join('');
+        tb.innerHTML = inventory.map((i, idx) => {
+            const isDiff = i.actual !== i.expect;
+            return `
+                <tr class="${isDiff ? 'row-diff' : ''}">
+                    <td><b>${i.name}</b><br><small style="color:#8E8E93">${i.barcode}</small></td>
+                    <td align="center">${i.expect}</td>
+                    <td align="center" class="${isDiff ? 'text-diff' : ''}">${i.actual}</td>
+                </tr>
+            `;
+        }).join('');
     }
 
-    // 扫码触发
-    document.getElementById('scanInput').addEventListener('keydown', e => {
+    scanInput.addEventListener('keydown', e => {
         if (e.key === 'Enter') {
-            const code = e.target.value.trim();
+            const code = scanInput.value.trim();
             const idx = inventory.findIndex(i => i.barcode === code);
             if (idx !== -1) {
                 currentIdx = idx;
-                // 核心修改：默认显示“应有数量”
                 currentInput = inventory[idx].expect.toString();
-                isFirstKey = true; // 设置标志位，按数字键时直接覆盖
-                
+                isFirstKey = true; 
                 document.getElementById('mName').innerText = inventory[idx].name;
                 document.getElementById('mPrice').innerText = '¥' + inventory[idx].price;
                 updateDisplay();
                 document.getElementById('qtyModal').style.display = 'flex';
-                document.getElementById('scanInput').blur(); 
+                scanInput.blur(); // 弹出盘点面板时释放焦点
+            } else if(code !== "") {
+                alert("未找到条码: " + code);
             }
-            e.target.value = '';
+            scanInput.value = '';
         }
     });
 
-    // 键盘逻辑
     function pressNum(n) {
-        if (isFirstKey) {
-            // 如果是第一次按数字键，直接替换默认的应有数量
-            currentInput = n.toString();
-            isFirstKey = false;
-        } else {
-            // 之后按键则是字符串追加（例如按2再按1，得到21）
-            if (currentInput === "0") {
-                currentInput = n.toString();
-            } else {
-                currentInput += n.toString();
-            }
-        }
+        if (isFirstKey) { currentInput = n.toString(); isFirstKey = false; }
+        else { currentInput = (currentInput === "0") ? n.toString() : currentInput + n.toString(); }
         updateDisplay();
     }
-
-    function clearVal() {
-        currentInput = "0";
-        isFirstKey = false; // 清除后也不再覆盖，从0开始加
-        updateDisplay();
-    }
-
-    function adjust(n) {
+    function clearVal() { currentInput = "0"; isFirstKey = false; updateDisplay(); }
+    function adjust(n) { 
         let val = parseInt(currentInput) + n;
         currentInput = val < 0 ? "0" : val.toString();
         isFirstKey = false;
         updateDisplay();
     }
-
-    function updateDisplay() {
-        document.getElementById('valDisplay').innerText = currentInput;
-    }
-
-    function confirmEntry() {
-        inventory[currentIdx].actual = parseInt(currentInput);
-        render();
-        closeModal();
-    }
+    function updateDisplay() { document.getElementById('valDisplay').innerText = currentInput; }
+    function confirmEntry() { inventory[currentIdx].actual = parseInt(currentInput); render(); closeModal(); }
 
     function closeModal() {
         document.getElementById('qtyModal').style.display = 'none';
-        setTimeout(() => document.getElementById('scanInput').focus(), 300);
+        // 关闭弹窗后，自动回归焦点到扫码框
+        setTimeout(() => scanInput.focus(), 300);
     }
 </script>
 </body>
