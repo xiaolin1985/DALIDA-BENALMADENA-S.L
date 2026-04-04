@@ -310,10 +310,13 @@
             不用 type="number" (允许 e/+/- 字符)
         -->
         <input
-            type="tel"
+            type="number"
             id="qtyInput"
             inputmode="numeric"
+            pattern="[0-9]*"
             placeholder="1"
+            min="-9999"
+            max="9999"
             autocomplete="off"
             autocorrect="off"
         >
