@@ -310,15 +310,14 @@
             不用 type="number" (允许 e/+/- 字符)
         -->
         <input
-            type="number"
+            type="text"
             id="qtyInput"
             inputmode="numeric"
-            pattern="[0-9]*"
+            pattern="-?[0-9]*"
             placeholder="1"
-            min="-9999"
-            max="9999"
             autocomplete="off"
             autocorrect="off"
+            autocapitalize="off"
         >
         <div class="qty-hint">回车或点确认默认 +1｜输入负数冲减</div>
 
