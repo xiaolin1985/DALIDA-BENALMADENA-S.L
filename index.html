@@ -3,80 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Inventory Pro | 触控增强版</title>
+    <title>盘点助手 Pro</title>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
             --ios-bg: #F2F2F7;
             --ios-blue: #007AFF;
-            --ios-text: #1C1C1E;
-            --key-bg: #FFFFFF;
-            --key-active: #D1D1D6;
+            --ios-red: #FF3B30;
+            --ios-card: #FFFFFF;
         }
 
         body {
             font-family: -apple-system, sans-serif;
-            background-color: var(--ios-bg); margin: 0; padding: 15px; color: var(--ios-text);
+            background-color: var(--ios-bg); margin: 0; padding: 15px; color: #1C1C1E;
+            -webkit-user-select: none; /* 防止长按弹出选择框 */
         }
 
-        /* 主容器 */
         .app-container { max-width: 500px; margin: 0 auto; }
         
-        /* 扫码激活框 */
         .scan-box {
-            background: #FFF; padding: 15px; border-radius: 15px; margin-bottom: 15px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: center;
+            background: var(--ios-card); padding: 15px; border-radius: 15px; margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); text-align: center;
         }
         #scanInput {
-            width: 90%; height: 44px; border: 2px solid var(--ios-blue);
-            border-radius: 10px; font-size: 16px; text-align: center;
+            width: 90%; height: 48px; border: 2px solid var(--ios-blue);
+            border-radius: 12px; font-size: 18px; text-align: center; outline: none;
         }
 
-        /* 列表展示 */
-        .list-card { background: #FFF; border-radius: 15px; overflow: hidden; }
+        .list-card { background: var(--ios-card); border-radius: 15px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         table { width: 100%; border-collapse: collapse; }
         th { background: #F9F9F9; padding: 12px; font-size: 12px; color: #8E8E93; text-align: left; }
         td { padding: 12px; font-size: 14px; border-bottom: 0.5px solid #E5E5EA; }
 
-        /* 弹窗遮罩 */
         .modal-overlay {
             position: fixed; top:0; left:0; right:0; bottom:0;
-            background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: flex-end; z-index: 1000;
+            background: rgba(0,0,0,0.4); backdrop-filter: blur(5px);
+            display: none; justify-content: center; align-items: flex-end; z-index: 1000;
         }
         
-        /* 盘点弹窗 - 底部升起样式更适合手持操作 */
         .modal {
-            background: #F2F2F7; width: 100%; border-radius: 20px 20px 0 0;
-            padding: 20px; box-sizing: border-box; animation: slideUp 0.3s ease-out;
+            background: var(--ios-bg); width: 100%; border-radius: 25px 25px 0 0;
+            padding: 25px 20px; box-sizing: border-box; animation: slideUp 0.2s ease-out;
         }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        .modal-header { text-align: center; margin-bottom: 15px; }
+        .info-header { text-align: center; margin-bottom: 10px; }
+        .product-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+        .product-price { font-size: 28px; font-weight: 800; color: var(--ios-blue); margin-bottom: 5px; }
+        .display-label { font-size: 12px; color: #8E8E93; margin-top: 10px; }
+        
+        /* 数量显示区 */
         .display-val { 
-            font-size: 48px; font-weight: 800; color: var(--ios-blue); 
-            background: #FFF; border-radius: 12px; margin: 10px 0; padding: 10px;
+            font-size: 64px; font-weight: 800; color: #1C1C1E; 
+            background: #FFF; border-radius: 16px; margin: 5px 0; padding: 10px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); min-height: 80px;
+            display: flex; align-items: center; justify-content: center;
         }
 
-        /* 自定义数字键盘网格 */
-        .numpad {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px;
-        }
-        .quick-grid {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 15px;
-        }
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 15px; }
         
         .key {
-            background: var(--key-bg); border: none; border-radius: 10px;
-            padding: 15px 0; font-size: 20px; font-weight: 600; color: var(--ios-text);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.1s;
+            background: #FFF; border: none; border-radius: 15px;
+            padding: 18px 0; font-size: 26px; font-weight: 600; color: #000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08); -webkit-tap-highlight-color: transparent;
         }
-        .key:active { background: var(--key-active); transform: scale(0.95); }
-        .key.blue { background: var(--ios-blue); color: #FFF; }
-        .key.red { color: #FF3B30; }
-        .key.small { padding: 10px 0; font-size: 14px; background: #E5E5EA; }
+        .key:active { background: #D1D1D6; }
+        .key.red { color: var(--ios-red); font-size: 20px; }
+        .key.gray { font-size: 18px; background: #E5E5EA; }
 
-        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
-        .action-btn { flex: 1; padding: 15px; border-radius: 12px; border: none; font-size: 16px; font-weight: 700; }
+        .btn-group { display: flex; gap: 12px; margin-top: 20px; }
+        .action-btn { 
+            flex: 1; padding: 18px; border-radius: 15px; border: none; 
+            font-size: 18px; font-weight: 700;
+        }
     </style>
 </head>
 <body>
@@ -89,7 +88,7 @@
     </div>
 
     <div class="scan-box">
-        <input type="text" id="scanInput" placeholder="点击激活扫码枪/手动输入条码" autocomplete="off">
+        <input type="text" id="scanInput" placeholder="点击此处开始扫码" autocomplete="off">
     </div>
 
     <div class="list-card">
@@ -102,40 +101,30 @@
 
 <div class="modal-overlay" id="qtyModal">
     <div class="modal">
-        <div class="modal-header">
-            <div id="mName" style="font-weight:600;">商品名称</div>
-            <div style="font-size: 12px; color:#8E8E93;">当前累计录入:</div>
+        <div class="info-header">
+            <div class="product-name" id="mName">商品加载中...</div>
+            <div class="product-price" id="mPrice">¥0.00</div>
+            <div class="display-label">确认录入数量</div>
             <div class="display-val" id="valDisplay">0</div>
         </div>
 
-        <div class="quick-grid">
-            <button class="key small" onclick="addVal(1)">+1</button>
-            <button class="key small" onclick="addVal(2)">+2</button>
-            <button class="key small" onclick="addVal(4)">+4</button>
-            <button class="key small" onclick="addVal(6)">+6</button>
-            <button class="key small" onclick="addVal(8)">+8</button>
-            <button class="key small" onclick="addVal(10)">+10</button>
-            <button class="key small" onclick="addVal(12)">+12</button>
-            <button class="key small" onclick="addVal(24)">+24</button>
-        </div>
-
         <div class="numpad">
-            <button class="key" onclick="addVal(1)">1</button>
-            <button class="key" onclick="addVal(2)">2</button>
-            <button class="key" onclick="addVal(3)">3</button>
-            <button class="key" onclick="addVal(4)">4</button>
-            <button class="key" onclick="addVal(5)">5</button>
-            <button class="key" onclick="addVal(6)">6</button>
-            <button class="key" onclick="addVal(7)">7</button>
-            <button class="key" onclick="addVal(8)">8</button>
-            <button class="key" onclick="addVal(9)">9</button>
+            <button class="key" onclick="pressNum(1)">1</button>
+            <button class="key" onclick="pressNum(2)">2</button>
+            <button class="key" onclick="pressNum(3)">3</button>
+            <button class="key" onclick="pressNum(4)">4</button>
+            <button class="key" onclick="pressNum(5)">5</button>
+            <button class="key" onclick="pressNum(6)">6</button>
+            <button class="key" onclick="pressNum(7)">7</button>
+            <button class="key" onclick="pressNum(8)">8</button>
+            <button class="key" onclick="pressNum(9)">9</button>
             <button class="key red" onclick="clearVal()">清除</button>
-            <button class="key" onclick="addVal(0)">0</button>
-            <button class="key" style="font-size:14px" onclick="addVal(-1)">修正-1</button>
+            <button class="key" onclick="pressNum(0)">0</button>
+            <button class="key gray" onclick="adjust(-1)">修正-1</button>
         </div>
 
         <div class="btn-group">
-            <button class="action-btn" style="background:#E5E5EA" onclick="closeModal()">取消</button>
+            <button class="action-btn" style="background:#E5E5EA;" onclick="closeModal()">取消</button>
             <button class="action-btn" style="background:var(--ios-blue); color:#FFF" onclick="confirmEntry()">确认录入</button>
         </div>
     </div>
@@ -144,9 +133,10 @@
 <script>
     let inventory = [];
     let currentIdx = -1;
-    let tempQty = 0;
+    let currentInput = "0";
+    let isFirstKey = true; // 标记是否为第一次按键，用于覆盖默认值
 
-    // 导入
+    // 导入 Excel
     document.getElementById('fileInput').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = (evt) => {
@@ -155,8 +145,9 @@
             const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
             inventory = json.map(i => ({
                 barcode: String(i['条码'] || '').trim(),
-                name: i['商品名'] || i['商品'] || '未知',
-                expect: i['应有数量'] || 0,
+                name: i['商品名'] || i['商品'] || '未知商品',
+                price: parseFloat(i['售价'] || 0).toFixed(2),
+                expect: parseInt(i['应有数量'] || 0),
                 actual: 0
             }));
             render();
@@ -182,42 +173,62 @@
             const idx = inventory.findIndex(i => i.barcode === code);
             if (idx !== -1) {
                 currentIdx = idx;
-                tempQty = 0; // 默认值设为0，通过点击来加
+                // 核心修改：默认显示“应有数量”
+                currentInput = inventory[idx].expect.toString();
+                isFirstKey = true; // 设置标志位，按数字键时直接覆盖
+                
                 document.getElementById('mName').innerText = inventory[idx].name;
+                document.getElementById('mPrice').innerText = '¥' + inventory[idx].price;
                 updateDisplay();
                 document.getElementById('qtyModal').style.display = 'flex';
-                // 关键：在扫码后主动让扫码框失去焦点，防止 iOS 弹出键盘挡住我们的数字面板
-                document.getElementById('scanInput').blur();
+                document.getElementById('scanInput').blur(); 
             }
             e.target.value = '';
         }
     });
 
-    // 逻辑：点击数字即“增加”
-    function addVal(n) {
-        tempQty += n;
-        if(tempQty < 0) tempQty = 0; // 不允许负数
+    // 键盘逻辑
+    function pressNum(n) {
+        if (isFirstKey) {
+            // 如果是第一次按数字键，直接替换默认的应有数量
+            currentInput = n.toString();
+            isFirstKey = false;
+        } else {
+            // 之后按键则是字符串追加（例如按2再按1，得到21）
+            if (currentInput === "0") {
+                currentInput = n.toString();
+            } else {
+                currentInput += n.toString();
+            }
+        }
         updateDisplay();
     }
 
     function clearVal() {
-        tempQty = 0;
+        currentInput = "0";
+        isFirstKey = false; // 清除后也不再覆盖，从0开始加
+        updateDisplay();
+    }
+
+    function adjust(n) {
+        let val = parseInt(currentInput) + n;
+        currentInput = val < 0 ? "0" : val.toString();
+        isFirstKey = false;
         updateDisplay();
     }
 
     function updateDisplay() {
-        document.getElementById('valDisplay').innerText = tempQty;
+        document.getElementById('valDisplay').innerText = currentInput;
     }
 
     function confirmEntry() {
-        inventory[currentIdx].actual += tempQty;
+        inventory[currentIdx].actual = parseInt(currentInput);
         render();
         closeModal();
     }
 
     function closeModal() {
         document.getElementById('qtyModal').style.display = 'none';
-        // 回到扫码状态
         setTimeout(() => document.getElementById('scanInput').focus(), 300);
     }
 </script>
