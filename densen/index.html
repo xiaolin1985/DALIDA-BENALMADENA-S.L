@@ -16,7 +16,7 @@
         
         /* Header */
         .header { background: #fff; padding: 15px; border-bottom: 0.5px solid #ccc; display: flex; justify-content: space-between; align-items: center; padding-top: env(safe-area-inset-top); }
-        #status { font-size: 13px; font-weight: bold; color: var(--ios-blue); max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #status { font-size: 13px; font-weight: bold; color: var(--ios-blue); max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
         /* 内容区 */
         .main { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; }
@@ -66,7 +66,7 @@
 <body onclick="handleBodyClick(event)">
 
 <div class="header">
-    <div id="status">等待导入 (XLSX)</div>
+    <div id="status">未导入商品表</div>
     <div style="display: flex; gap: 6px;">
         <button class="btn btn-blue" onclick="document.getElementById('fIn').click()">导入</button>
         <button class="btn btn-blue" style="background:#5856d6" onclick="doExport()">导出结果</button>
@@ -80,14 +80,17 @@
     <div id="pCard" class="card" style="display:none;">
         <span id="vName" class="item-name">---</span>
         <span id="vCode" class="item-code">---</span>
-        <div style="margin: 10px 0;">实数: <b id="vStock" style="font-size: 32px; color: var(--ios-blue);">0</b></div>
+        <div style="margin: 10px 0; font-size: 14px; color:#666;">
+            原有库存: <b id="vOldStock" style="color:#000;">0</b><br>
+            <div style="margin-top:5px; font-size:16px;">实数: <b id="vStock" style="font-size: 32px; color: var(--ios-blue);">0</b></div>
+        </div>
         <button class="btn btn-action" onclick="openModal('NEW')">修改库存</button>
     </div>
 
     <div id="historyLog" style="display:none; flex:1; display:flex; flex-direction:column; overflow:hidden;">
         <div class="log-header">
-            <span>盘点历史记录</span>
-            <button class="btn-red" onclick="resetInventory()">⚠️ 重置当前盘点</button>
+            <span>盘点记录 (点击修改)</span>
+            <button class="btn-red" onclick="resetInventory()">⚠️ 重置</button>
         </div>
         <div class="log-list" id="logList" style="flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;"></div>
     </div>
@@ -98,20 +101,14 @@
         <div id="modalTitle" style="font-weight:600; color:var(--gray); margin-bottom:10px; font-size:14px;">输入实数</div>
         <div class="display-val highlight" id="modalDisplay">0</div>
         <div class="numpad">
-            <button class="key" onclick="pressKey('1')">1</button>
-            <button class="key" onclick="pressKey('2')">2</button>
-            <button class="key" onclick="pressKey('3')">3</button>
-            <button class="key" onclick="pressKey('4')">4</button>
-            <button class="key" onclick="pressKey('5')">5</button>
-            <button class="key" onclick="pressKey('6')">6</button>
-            <button class="key" onclick="pressKey('7')">7</button>
-            <button class="key" onclick="pressKey('8')">8</button>
-            <button class="key" onclick="pressKey('9')">9</button>
+            <button class="key" onclick="pressKey('1')">1</button><button class="key" onclick="pressKey('2')">2</button><button class="key" onclick="pressKey('3')">3</button>
+            <button class="key" onclick="pressKey('4')">4</button><button class="key" onclick="pressKey('5')">5</button><button class="key" onclick="pressKey('6')">6</button>
+            <button class="key" onclick="pressKey('7')">7</button><button class="key" onclick="pressKey('8')">8</button><button class="key" onclick="pressKey('9')">9</button>
             <button class="key" style="background:none;"></button>
             <button class="key" onclick="pressKey('0')">0</button>
             <button class="key" style="color:var(--danger); font-size:18px;" onclick="pressKey('DEL')">删除</button>
             <button class="key confirm" onclick="confirmSave()">确定</button>
-            <button class="key" style="grid-column:span 3; background:none; font-size:16px; color:var(--gray); margin-top:10px;" onclick="closeModals()">取消修改</button>
+            <button class="key" style="grid-column:span 3; background:none; font-size:16px; color:var(--gray); margin-top:10px;" onclick="closeModals()">取消</button>
         </div>
     </div>
 </div>
@@ -124,6 +121,7 @@
     let isModalOpen = false;
     let tempVal = "0";
 
+    // 核心修复点：loadExcel 时保存原有库存
     async function loadExcel(obj) {
         const file = obj.files[0]; if(!file) return;
         document.getElementById('status').innerText = "读取中...";
@@ -133,13 +131,21 @@
         db.clear();
         for(let i=1; i<rows.length; i++){
             const r = rows[i];
-            if(r && r[0]) db.set(String(r[0]).trim(), { code: String(r[0]), name: r[1]||"未知商品" });
+            if(r && r[0]) {
+                const code = String(r[0]).trim();
+                // 数据库存储：条码、名称、原有库存
+                db.set(code, { 
+                    code: code, 
+                    name: r[1] || "未知商品", 
+                    oldStock: parseFloat(r[2]) || 0 
+                });
+            }
         }
         document.getElementById('status').innerText = `✅ 已加载:${db.size}条`;
         forceFocus();
     }
 
-    // 扫码监听
+    // 核心修复点：扫码时正确获取数据
     document.getElementById('hiddenScanner').addEventListener('keydown', e => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -148,7 +154,7 @@
             if(isModalOpen) return;
             const p = db.get(code);
             if(p){
-                curP = {...p, stock: 0};
+                curP = { ...p, currentStock: 0 }; // 初始实数为0，但保留 p.oldStock
                 showCard();
             } else {
                 alert("库中无此商品: " + code);
@@ -159,18 +165,17 @@
     function showCard() {
         document.getElementById('vName').innerText = curP.name;
         document.getElementById('vCode').innerText = curP.code;
-        document.getElementById('vStock').innerText = curP.stock;
+        document.getElementById('vOldStock').innerText = curP.oldStock; // 显示原有库存
+        document.getElementById('vStock').innerText = curP.currentStock;
         document.getElementById('pCard').style.display = 'block';
     }
 
-    // 重置功能
     function resetInventory() {
-        if(confirm("确定要清空当前的盘点记录吗？\n此操作不可恢复！")) {
+        if(confirm("确定要清空所有盘点记录吗？")) {
             logs = [];
             curP = null;
             document.getElementById('pCard').style.display = 'none';
             renderLogs();
-            alert("已清空所有记录");
         }
     }
 
@@ -178,13 +183,11 @@
         editIndex = index;
         isModalOpen = true;
         const display = document.getElementById('modalDisplay');
-        const title = document.getElementById('modalTitle');
         if(type === 'EDIT') {
-            title.innerText = "重新修正盘点数";
             tempVal = logs[index].实数.toString();
         } else {
-            title.innerText = "输入盘点实数";
-            tempVal = "0";
+            // 修改这里：点击修改时，默认填入旧库存方便修改，或者保持0
+            tempVal = curP.currentStock.toString();
         }
         display.innerText = tempVal;
         document.getElementById('numModal').style.display = 'flex';
@@ -204,11 +207,21 @@
         const finalVal = parseFloat(tempVal) || 0;
         if (editIndex > -1) {
             logs[editIndex].实数 = finalVal;
-            if(curP && logs[editIndex].条码 === curP.code) document.getElementById('vStock').innerText = finalVal;
+            if(curP && logs[editIndex].条码 === curP.code) {
+                curP.currentStock = finalVal;
+                document.getElementById('vStock').innerText = finalVal;
+            }
         } else {
             if(!curP) return;
-            logs.unshift({ "条码": curP.code, "商品名称": curP.name, "实数": finalVal, "时间": new Date().toLocaleTimeString() });
+            curP.currentStock = finalVal;
             document.getElementById('vStock').innerText = finalVal;
+            logs.unshift({ 
+                "条码": curP.code, 
+                "商品名称": curP.name, 
+                "原有库存": curP.oldStock, 
+                "实数": finalVal, 
+                "时间": new Date().toLocaleTimeString() 
+            });
         }
         renderLogs();
         closeModals();
@@ -222,7 +235,7 @@
             <div class="log-item" onclick="openModal('EDIT', ${index})">
                 <div style="flex:1; overflow:hidden;">
                     <span style="font-weight:600; color:#000; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${l.商品名称}</span>
-                    <span style="font-size:11px; color:var(--gray)">${l.条码}</span>
+                    <span style="font-size:11px; color:var(--gray)">${l.条码} (原:${l.原有库存})</span>
                 </div>
                 <div style="text-align:right; margin-left:15px; flex-shrink:0;">
                     <span style="font-size:22px; font-weight:900; color:var(--ios-blue)">${l.实数}</span>
@@ -254,7 +267,7 @@
         if(logs.length === 0) return alert("无记录");
         const ws = XLSX.utils.json_to_sheet(logs);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "结果");
+        XLSX.utils.book_append_sheet(wb, ws, "盘点结果");
         XLSX.writeFile(wb, `盘点_${new Date().toLocaleDateString()}.xlsx`);
     }
 
