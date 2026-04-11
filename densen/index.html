@@ -3,275 +3,203 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>DENSEN 盘点专业版</title>
+    <title>DENSEN 盘点&调价助手</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
-        :root { --ios-blue: #007aff; --bg: #f2f2f7; --card: #ffffff; --success: #34c759; --white: #ffffff; --gray: #8e8e93; --danger: #ff3b30; }
+        :root { --ios-blue: #007aff; --bg: #f2f2f7; --success: #34c759; --white: #ffffff; --gray: #8e8e93; --danger: #ff3b30; --orange: #ff9500; }
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-        body { 
-            font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; 
-            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
-            padding-bottom: env(safe-area-inset-bottom);
-        }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; padding-bottom: env(safe-area-inset-bottom); }
         
         /* Header */
         .header { background: #fff; padding: 15px; border-bottom: 0.5px solid #ccc; display: flex; justify-content: space-between; align-items: center; padding-top: env(safe-area-inset-top); }
-        #status { font-size: 13px; font-weight: bold; color: var(--ios-blue); max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #status { font-size: 13px; font-weight: bold; color: var(--ios-blue); }
 
-        /* 内容区 */
-        .main { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; }
-        .card { background: #fff; border-radius: 15px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); text-align: center; margin-bottom: 15px; }
-        .item-name { font-weight: bold; font-size: 18px; color: #000; display: block; }
-        .item-code { font-size: 12px; color: var(--gray); margin-bottom: 10px; display: block; }
+        /* Content */
+        .main { flex: 1; padding: 15px; overflow-y: auto; }
+        .card { background: #fff; border-radius: 18px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); text-align: center; margin-bottom: 15px; }
+        .item-name { font-weight: bold; font-size: 22px; color: #000; display: block; margin-bottom: 4px; }
+        .item-code { font-size: 13px; color: var(--gray); margin-bottom: 15px; display: block; }
 
-        /* 历史记录列表 */
-        .log-header { font-size: 12px; color: var(--gray); margin-bottom: 8px; padding-left: 5px; display: flex; justify-content: space-between; align-items: center; }
-        .log-list { background: #fff; border-radius: 12px; overflow: hidden; border: 0.5px solid #eee; }
-        .log-item { display: flex; justify-content: space-between; padding: 15px; border-bottom: 0.5px solid #eee; font-size: 15px; align-items: center; }
-        .log-item:active { background: #f0f0f0; }
-        .log-item:last-child { border-bottom: none; }
+        /* Info Grid */
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; border-top: 0.5px solid #eee; padding-top: 15px; }
+        .info-label { font-size: 12px; color: var(--gray); display: block; margin-bottom: 4px; }
+        .info-val { font-size: 20px; font-weight: bold; color: #333; }
+        .val-stock { color: var(--ios-blue); }
+        .val-price { color: var(--orange); }
 
-        /* 按钮样式 */
-        .btn { border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
-        .btn-blue { background: var(--ios-blue); color: white; padding: 8px 12px; font-size: 12px; }
-        .btn-red { background: #fff; color: var(--danger); border: 1px solid var(--danger); padding: 5px 10px; font-size: 11px; border-radius: 6px; }
-        .btn-action { background: var(--success); color: white; width: 100%; height: 55px; font-size: 18px; }
+        /* Action Buttons */
+        .action-group { display: flex; gap: 10px; }
+        .btn-action { flex: 1; height: 55px; border-radius: 12px; border: none; font-size: 16px; font-weight: bold; color: white; }
+        .bg-stock { background: var(--ios-blue); }
+        .bg-price { background: var(--orange); }
 
-        /* 数字键盘 Modal */
-        .modal-overlay { 
-            position: fixed; inset: 0; background: rgba(0,0,0,0.4); 
-            display: none; align-items: flex-end; justify-content: center; 
-            z-index: 2000; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-        }
-        .modal { 
-            background: var(--bg); width: 100%; border-radius: 25px 25px 0 0; 
-            padding: 20px; text-align: center; animation: slideUp 0.25s ease-out; 
-            max-height: 90vh; display: flex; flex-direction: column; 
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
-            padding-bottom: calc(20px + env(safe-area-inset-bottom));
-        }
+        /* Log List */
+        .log-header { font-size: 12px; color: var(--gray); margin: 15px 0 8px 5px; display: flex; justify-content: space-between; }
+        .log-item { background: #fff; padding: 15px; border-bottom: 0.5px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .log-item:first-child { border-radius: 12px 12px 0 0; }
+        .log-item:last-child { border-radius: 0 0 12px 12px; border-bottom: none; }
+
+        /* Modal & Numpad */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: flex-end; z-index: 2000; backdrop-filter: blur(10px); }
+        .modal { background: var(--bg); width: 100%; border-radius: 25px 25px 0 0; padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom)); animation: slideUp 0.2s ease-out; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        
-        .display-val { font-size: 55px; font-weight: 900; color: var(--ios-blue); background: #fff; border-radius: 15px; padding: 10px; margin-bottom: 20px; border: 2px solid #e5e5ea; }
-        .display-val.highlight { background: #e5f1ff; border-color: var(--ios-blue); }
-        
+        .display-val { font-size: 45px; font-weight: 900; color: var(--ios-blue); background: #fff; border-radius: 15px; padding: 10px; margin-bottom: 15px; text-align: center; }
         .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .key { background: #fff; border: none; border-radius: 15px; padding: 18px 0; font-size: 28px; font-weight: 600; }
+        .key { background: #fff; border: none; border-radius: 12px; padding: 15px 0; font-size: 24px; font-weight: 600; }
         .key:active { background: #d1d1d6; }
-        .key.confirm { background: var(--success); color: #fff; grid-column: span 3; font-size: 22px; margin-top: 10px; height: 60px; }
+        .confirm-btn { grid-column: span 3; background: var(--success); color: white; height: 55px; margin-top: 10px; font-size: 20px; }
 
-        #hiddenScanner { position: absolute; left: -999px; opacity: 0; width: 1px; height: 1px; }
+        #hiddenScanner { position: absolute; left: -999px; opacity: 0; }
     </style>
 </head>
-<body onclick="handleBodyClick(event)">
+<body onclick="document.getElementById('hiddenScanner').focus()">
 
 <div class="header">
-    <div id="status">未导入商品表</div>
-    <div style="display: flex; gap: 6px;">
-        <button class="btn btn-blue" onclick="document.getElementById('fIn').click()">导入</button>
-        <button class="btn btn-blue" style="background:#5856d6" onclick="doExport()">导出结果</button>
+    <div id="status">请导入商品表</div>
+    <div style="display: flex; gap: 8px;">
+        <button onclick="document.getElementById('fIn').click()" style="padding:8px 15px; border-radius:8px; border:none; background:var(--ios-blue); color:white; font-size:12px;">导入</button>
+        <button onclick="doExport()" style="padding:8px 15px; border-radius:8px; border:none; background:#5856d6; color:white; font-size:12px;">导出</button>
     </div>
 </div>
 
 <div class="main">
     <input type="file" id="fIn" hidden accept=".xlsx,.xls,.csv" onchange="loadExcel(this)">
-    <input type="text" id="hiddenScanner" autocomplete="off">
+    <input type="text" id="hiddenScanner" autofocus autocomplete="off">
 
     <div id="pCard" class="card" style="display:none;">
         <span id="vName" class="item-name">---</span>
         <span id="vCode" class="item-code">---</span>
-        <div style="margin: 10px 0; font-size: 14px; color:#666;">
-            原有库存: <b id="vOldStock" style="color:#000;">0</b><br>
-            <div style="margin-top:5px; font-size:16px;">实数: <b id="vStock" style="font-size: 32px; color: var(--ios-blue);">0</b></div>
+        <div class="info-grid">
+            <div class="info-box">
+                <span class="info-label">现有库存</span>
+                <span id="vOldStock" class="info-val val-stock">0</span>
+            </div>
+            <div class="info-box">
+                <span class="info-label">当前售价</span>
+                <span id="vOldPrice" class="info-val val-price">0.00</span>
+            </div>
         </div>
-        <button class="btn btn-action" onclick="openModal('NEW')">修改库存</button>
+        <div class="action-group">
+            <button class="btn-action bg-stock" onclick="openKeypad('STOCK')">修改库存</button>
+            <button class="btn-action bg-price" onclick="openKeypad('PRICE')">修改售价</button>
+        </div>
     </div>
 
-    <div id="historyLog" style="display:none; flex:1; display:flex; flex-direction:column; overflow:hidden;">
+    <div id="historyLog" style="display:none;">
         <div class="log-header">
-            <span>盘点记录 (点击修改)</span>
-            <button class="btn-red" onclick="resetInventory()">⚠️ 重置</button>
+            <span>操作记录</span>
+            <span style="color:var(--danger)" onclick="location.reload()">⚠️ 清空重置</span>
         </div>
-        <div class="log-list" id="logList" style="flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;"></div>
+        <div id="logList"></div>
     </div>
 </div>
 
-<div class="modal-overlay" id="numModal">
+<div class="modal-overlay" id="keypadModal">
     <div class="modal">
-        <div id="modalTitle" style="font-weight:600; color:var(--gray); margin-bottom:10px; font-size:14px;">输入实数</div>
-        <div class="display-val highlight" id="modalDisplay">0</div>
+        <div id="modalTitle" style="text-align:center; margin-bottom:10px; font-weight:bold; color:var(--gray);">修改</div>
+        <div class="display-val" id="modalDisplay">0</div>
         <div class="numpad">
-            <button class="key" onclick="pressKey('1')">1</button><button class="key" onclick="pressKey('2')">2</button><button class="key" onclick="pressKey('3')">3</button>
-            <button class="key" onclick="pressKey('4')">4</button><button class="key" onclick="pressKey('5')">5</button><button class="key" onclick="pressKey('6')">6</button>
-            <button class="key" onclick="pressKey('7')">7</button><button class="key" onclick="pressKey('8')">8</button><button class="key" onclick="pressKey('9')">9</button>
-            <button class="key" style="background:none;"></button>
-            <button class="key" onclick="pressKey('0')">0</button>
-            <button class="key" style="color:var(--danger); font-size:18px;" onclick="pressKey('DEL')">删除</button>
-            <button class="key confirm" onclick="confirmSave()">确定</button>
-            <button class="key" style="grid-column:span 3; background:none; font-size:16px; color:var(--gray); margin-top:10px;" onclick="closeModals()">取消</button>
+            <button class="key" onclick="press('1')">1</button><button class="key" onclick="press('2')">2</button><button class="key" onclick="press('3')">3</button>
+            <button class="key" onclick="press('4')">4</button><button class="key" onclick="press('5')">5</button><button class="key" onclick="press('6')">6</button>
+            <button class="key" onclick="press('7')">7</button><button class="key" onclick="press('8')">8</button><button class="key" onclick="press('9')">9</button>
+            <button class="key" onclick="press('.')">.</button><button class="key" onclick="press('0')">0</button><button class="key" style="color:var(--danger)" onclick="press('DEL')">删</button>
+            <button class="key confirm-btn" onclick="save()">确认修改</button>
+            <button class="key" style="grid-column:span 3; background:none; font-size:16px; color:var(--gray)" onclick="closeModal()">取消</button>
         </div>
     </div>
 </div>
 
 <script>
-    let db = new Map();
-    let curP = null;
-    let logs = [];
-    let editIndex = -1;
-    let isModalOpen = false;
-    let tempVal = "0";
+    let db = new Map(), logs = [], curP = null, mode = '', tempVal = '';
 
-    // 核心修复点：loadExcel 时保存原有库存
     async function loadExcel(obj) {
         const file = obj.files[0]; if(!file) return;
-        document.getElementById('status').innerText = "读取中...";
+        document.getElementById('status').innerText = "加载中...";
         const data = await file.arrayBuffer();
         const wb = XLSX.read(data);
         const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
         db.clear();
         for(let i=1; i<rows.length; i++){
             const r = rows[i];
-            if(r && r[0]) {
-                const code = String(r[0]).trim();
-                // 数据库存储：条码、名称、原有库存
-                db.set(code, { 
-                    code: code, 
-                    name: r[1] || "未知商品", 
-                    oldStock: parseFloat(r[2]) || 0 
-                });
-            }
+            if(r && r[0]) db.set(String(r[0]).trim(), { code: String(r[0]), name: r[1]||"未知", stock: r[2]||0, price: r[3]||0 });
         }
         document.getElementById('status').innerText = `✅ 已加载:${db.size}条`;
-        forceFocus();
     }
 
-    // 核心修复点：扫码时正确获取数据
     document.getElementById('hiddenScanner').addEventListener('keydown', e => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            const code = e.target.value.trim();
-            e.target.value = '';
-            if(isModalOpen) return;
+        if(e.key==='Enter'){
+            const code = e.target.value.trim(); e.target.value = '';
             const p = db.get(code);
             if(p){
-                curP = { ...p, currentStock: 0 }; // 初始实数为0，但保留 p.oldStock
-                showCard();
-            } else {
-                alert("库中无此商品: " + code);
-            }
+                curP = {...p, newStock: p.stock, newPrice: p.price};
+                renderCard();
+            } else { alert("未找到条码"); }
         }
     });
 
-    function showCard() {
+    function renderCard(){
         document.getElementById('vName').innerText = curP.name;
         document.getElementById('vCode').innerText = curP.code;
-        document.getElementById('vOldStock').innerText = curP.oldStock; // 显示原有库存
-        document.getElementById('vStock').innerText = curP.currentStock;
+        document.getElementById('vOldStock').innerText = curP.newStock;
+        document.getElementById('vOldPrice').innerText = Number(curP.newPrice).toFixed(2);
         document.getElementById('pCard').style.display = 'block';
     }
 
-    function resetInventory() {
-        if(confirm("确定要清空所有盘点记录吗？")) {
-            logs = [];
-            curP = null;
-            document.getElementById('pCard').style.display = 'none';
-            renderLogs();
-        }
+    function openKeypad(m){
+        mode = m; tempVal = '0';
+        document.getElementById('modalTitle').innerText = mode === 'STOCK' ? "修改库存数量" : "修改商品售价";
+        document.getElementById('modalDisplay').innerText = tempVal;
+        document.getElementById('keypadModal').style.display = 'flex';
     }
 
-    function openModal(type, index = -1) {
-        editIndex = index;
-        isModalOpen = true;
-        const display = document.getElementById('modalDisplay');
-        if(type === 'EDIT') {
-            tempVal = logs[index].实数.toString();
-        } else {
-            // 修改这里：点击修改时，默认填入旧库存方便修改，或者保持0
-            tempVal = curP.currentStock.toString();
-        }
-        display.innerText = tempVal;
-        document.getElementById('numModal').style.display = 'flex';
-    }
-
-    function pressKey(key) {
-        if (key === 'DEL') {
-            tempVal = tempVal.length > 1 ? tempVal.slice(0, -1) : "0";
-        } else {
-            tempVal = (tempVal === "0") ? key : tempVal + key;
-            if (tempVal.length > 9) tempVal = tempVal.slice(0, 9);
+    function press(k){
+        if(k==='DEL'){ tempVal = tempVal.length>1 ? tempVal.slice(0,-1) : '0'; }
+        else {
+            if(tempVal==='0' && k!=='.') tempVal = k;
+            else if(k==='.' && tempVal.includes('.')) return;
+            else tempVal += k;
         }
         document.getElementById('modalDisplay').innerText = tempVal;
     }
 
-    function confirmSave() {
-        const finalVal = parseFloat(tempVal) || 0;
-        if (editIndex > -1) {
-            logs[editIndex].实数 = finalVal;
-            if(curP && logs[editIndex].条码 === curP.code) {
-                curP.currentStock = finalVal;
-                document.getElementById('vStock').innerText = finalVal;
-            }
-        } else {
-            if(!curP) return;
-            curP.currentStock = finalVal;
-            document.getElementById('vStock').innerText = finalVal;
-            logs.unshift({ 
-                "条码": curP.code, 
-                "商品名称": curP.name, 
-                "原有库存": curP.oldStock, 
-                "实数": finalVal, 
-                "时间": new Date().toLocaleTimeString() 
-            });
-        }
-        renderLogs();
-        closeModals();
+    function save(){
+        const val = parseFloat(tempVal) || 0;
+        if(mode==='STOCK') curP.newStock = val; else curP.newPrice = val;
+        
+        // 记录逻辑：如果记录里已有该条码，则更新；没有则新增
+        const existingIdx = logs.findIndex(l => l.条码 === curP.code);
+        const logData = { "条码": curP.code, "品名": curP.name, "实盘库存": curP.newStock, "新售价": curP.newPrice, "时间": new Date().toLocaleTimeString() };
+        
+        if(existingIdx > -1) logs[existingIdx] = logData;
+        else logs.unshift(logData);
+
+        renderCard(); renderLogs(); closeModal();
     }
 
-    function renderLogs() {
-        const container = document.getElementById('logList');
-        const history = document.getElementById('historyLog');
-        history.style.display = logs.length > 0 ? 'flex' : 'none';
-        container.innerHTML = logs.map((l, index) => `
-            <div class="log-item" onclick="openModal('EDIT', ${index})">
-                <div style="flex:1; overflow:hidden;">
-                    <span style="font-weight:600; color:#000; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${l.商品名称}</span>
-                    <span style="font-size:11px; color:var(--gray)">${l.条码} (原:${l.原有库存})</span>
+    function renderLogs(){
+        const hist = document.getElementById('historyLog');
+        hist.style.display = logs.length ? 'block' : 'none';
+        document.getElementById('logList').innerHTML = logs.map(l => `
+            <div class="log-item">
+                <div style="flex:1">
+                    <b style="font-size:15px">${l.品名}</b><br><small style="color:#999">${l.条码}</small>
                 </div>
-                <div style="text-align:right; margin-left:15px; flex-shrink:0;">
-                    <span style="font-size:22px; font-weight:900; color:var(--ios-blue)">${l.实数}</span>
-                    <div style="font-size:10px; color:#ccc;">${l.时间}</div>
+                <div style="text-align:right">
+                    <span style="color:var(--ios-blue); font-weight:bold">${l.实盘库存}件</span><br>
+                    <span style="color:var(--orange); font-weight:bold">€${Number(l.新售价).toFixed(2)}</span>
                 </div>
             </div>
         `).join('');
     }
 
-    function closeModals() {
-        document.getElementById('numModal').style.display = 'none';
-        isModalOpen = false;
-        editIndex = -1;
-        forceFocus();
-    }
-
-    function handleBodyClick(event) {
-        if(isModalOpen || event.target.closest('.modal')) return;
-        forceFocus();
-    }
-
-    function forceFocus() {
-        if (isModalOpen) return;
-        const scanner = document.getElementById('hiddenScanner');
-        if (document.activeElement !== scanner) scanner.focus();
-    }
-
-    function doExport() {
-        if(logs.length === 0) return alert("无记录");
+    function closeModal(){ document.getElementById('keypadModal').style.display='none'; }
+    function doExport(){
         const ws = XLSX.utils.json_to_sheet(logs);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "盘点结果");
-        XLSX.writeFile(wb, `盘点_${new Date().toLocaleDateString()}.xlsx`);
+        XLSX.utils.book_append_sheet(wb, ws, "结果");
+        XLSX.writeFile(wb, `盘点调价_${new Date().toLocaleDateString()}.xlsx`);
     }
-
-    setInterval(forceFocus, 1000);
+    setInterval(() => { if(document.getElementById('keypadModal').style.display!=='flex') document.getElementById('hiddenScanner').focus(); }, 1000);
 </script>
 </body>
 </html>
