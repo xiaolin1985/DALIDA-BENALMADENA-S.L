@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>DENSEN 盘点专业版 (内置键盘)</title>
+    <title>DENSEN 盘点专业版</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --ios-blue: #007aff; --bg: #f2f2f7; --card: #ffffff; --success: #34c759; --white: #ffffff; --gray: #8e8e93; --danger: #ff3b30; }
@@ -16,7 +16,7 @@
         
         /* Header */
         .header { background: #fff; padding: 15px; border-bottom: 0.5px solid #ccc; display: flex; justify-content: space-between; align-items: center; padding-top: env(safe-area-inset-top); }
-        #status { font-size: 14px; font-weight: bold; color: var(--ios-blue); }
+        #status { font-size: 13px; font-weight: bold; color: var(--ios-blue); max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
         /* 内容区 */
         .main { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; }
@@ -25,18 +25,19 @@
         .item-code { font-size: 12px; color: var(--gray); margin-bottom: 10px; display: block; }
 
         /* 历史记录列表 */
-        .log-header { font-size: 13px; color: var(--gray); margin-bottom: 8px; padding-left: 5px; }
+        .log-header { font-size: 12px; color: var(--gray); margin-bottom: 8px; padding-left: 5px; display: flex; justify-content: space-between; align-items: center; }
         .log-list { background: #fff; border-radius: 12px; overflow: hidden; border: 0.5px solid #eee; }
         .log-item { display: flex; justify-content: space-between; padding: 15px; border-bottom: 0.5px solid #eee; font-size: 15px; align-items: center; }
         .log-item:active { background: #f0f0f0; }
         .log-item:last-child { border-bottom: none; }
 
-        /* 主页按钮 */
+        /* 按钮样式 */
         .btn { border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
-        .btn-blue { background: var(--ios-blue); color: white; padding: 8px 16px; font-size: 13px; }
+        .btn-blue { background: var(--ios-blue); color: white; padding: 8px 12px; font-size: 12px; }
+        .btn-red { background: #fff; color: var(--danger); border: 1px solid var(--danger); padding: 5px 10px; font-size: 11px; border-radius: 6px; }
         .btn-action { background: var(--success); color: white; width: 100%; height: 55px; font-size: 18px; }
 
-        /* ==================== 内置数字键盘 Modal ==================== */
+        /* 数字键盘 Modal */
         .modal-overlay { 
             position: fixed; inset: 0; background: rgba(0,0,0,0.4); 
             display: none; align-items: flex-end; justify-content: center; 
@@ -51,20 +52,14 @@
         }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         
-        /* 键盘内显示数值 */
         .display-val { font-size: 55px; font-weight: 900; color: var(--ios-blue); background: #fff; border-radius: 15px; padding: 10px; margin-bottom: 20px; border: 2px solid #e5e5ea; }
         .display-val.highlight { background: #e5f1ff; border-color: var(--ios-blue); }
         
-        /* 键盘九宫格 */
         .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .key { background: #fff; border: none; border-radius: 15px; padding: 18px 0; font-size: 28px; font-weight: 600; font-family: -apple-system, sans-serif; box-shadow: 0 2px 2px rgba(0,0,0,0.05); }
+        .key { background: #fff; border: none; border-radius: 15px; padding: 18px 0; font-size: 28px; font-weight: 600; }
         .key:active { background: #d1d1d6; }
-        
-        /* 确认按钮（跨3列） */
         .key.confirm { background: var(--success); color: #fff; grid-column: span 3; font-size: 22px; margin-top: 10px; height: 60px; }
-        .key.confirm:active { background: #2b9d4a; }
 
-        /* 隐藏的原生输入框（用于扫码，不聚集焦点） */
         #hiddenScanner { position: absolute; left: -999px; opacity: 0; width: 1px; height: 1px; }
     </style>
 </head>
@@ -72,7 +67,7 @@
 
 <div class="header">
     <div id="status">等待导入 (XLSX)</div>
-    <div style="display: flex; gap: 8px;">
+    <div style="display: flex; gap: 6px;">
         <button class="btn btn-blue" onclick="document.getElementById('fIn').click()">导入</button>
         <button class="btn btn-blue" style="background:#5856d6" onclick="doExport()">导出结果</button>
     </div>
@@ -90,16 +85,18 @@
     </div>
 
     <div id="historyLog" style="display:none; flex:1; display:flex; flex-direction:column; overflow:hidden;">
-        <div class="log-header">盘点历史（点击数据重改）</div>
+        <div class="log-header">
+            <span>盘点历史记录</span>
+            <button class="btn-red" onclick="resetInventory()">⚠️ 重置当前盘点</button>
+        </div>
         <div class="log-list" id="logList" style="flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;"></div>
     </div>
 </div>
 
 <div class="modal-overlay" id="numModal">
     <div class="modal">
-        <div id="modalTitle" style="font-weight:600; color:var(--gray); margin-bottom:10px; font-size:14px;">修改盘点实数</div>
+        <div id="modalTitle" style="font-weight:600; color:var(--gray); margin-bottom:10px; font-size:14px;">输入实数</div>
         <div class="display-val highlight" id="modalDisplay">0</div>
-        
         <div class="numpad">
             <button class="key" onclick="pressKey('1')">1</button>
             <button class="key" onclick="pressKey('2')">2</button>
@@ -110,11 +107,11 @@
             <button class="key" onclick="pressKey('7')">7</button>
             <button class="key" onclick="pressKey('8')">8</button>
             <button class="key" onclick="pressKey('9')">9</button>
-            <button class="key" style="background:none; box-shadow:none;"></button> <button class="key" onclick="pressKey('0')">0</button>
-            <button class="key" style="color:var(--danger); font-size:20px;" onclick="pressKey('DEL')">删除</button>
-            
+            <button class="key" style="background:none;"></button>
+            <button class="key" onclick="pressKey('0')">0</button>
+            <button class="key" style="color:var(--danger); font-size:18px;" onclick="pressKey('DEL')">删除</button>
             <button class="key confirm" onclick="confirmSave()">确定</button>
-            <button class="key" style="grid-column:span 3; background:none; box-shadow:none; font-size:16px; color:var(--gray); margin-top:10px;" onclick="closeModals()">取消</button>
+            <button class="key" style="grid-column:span 3; background:none; font-size:16px; color:var(--gray); margin-top:10px;" onclick="closeModals()">取消修改</button>
         </div>
     </div>
 </div>
@@ -125,10 +122,8 @@
     let logs = [];
     let editIndex = -1;
     let isModalOpen = false;
-    // 键盘暂存值（字符串形式方便删除操作）
     let tempVal = "0";
 
-    // 1. 导入
     async function loadExcel(obj) {
         const file = obj.files[0]; if(!file) return;
         document.getElementById('status').innerText = "读取中...";
@@ -138,29 +133,25 @@
         db.clear();
         for(let i=1; i<rows.length; i++){
             const r = rows[i];
-            // 结构：0条码, 1商品名称, 2售价(可选,这里不涉及)
             if(r && r[0]) db.set(String(r[0]).trim(), { code: String(r[0]), name: r[1]||"未知商品" });
         }
         document.getElementById('status').innerText = `✅ 已加载:${db.size}条`;
-        forceFocus(); // 加载完，开始监听扫码
+        forceFocus();
     }
 
-    // 2. 扫码枪监听 (核心：即使没有焦点也能监听 Enter 结束的扫码)
+    // 扫码监听
     document.getElementById('hiddenScanner').addEventListener('keydown', e => {
         if (e.key === 'Enter') {
             e.preventDefault();
             const code = e.target.value.trim();
             e.target.value = '';
-            
-            // 如果弹窗开着，不允许扫码（防止数据乱套）
             if(isModalOpen) return;
-
             const p = db.get(code);
             if(p){
-                curP = {...p, stock: 0}; // 初始实数为0
+                curP = {...p, stock: 0};
                 showCard();
             } else {
-                alert("无此条码商品: " + code);
+                alert("库中无此商品: " + code);
             }
         }
     });
@@ -172,97 +163,70 @@
         document.getElementById('pCard').style.display = 'block';
     }
 
-    // 3. 内置键盘控制
+    // 重置功能
+    function resetInventory() {
+        if(confirm("确定要清空当前的盘点记录吗？\n此操作不可恢复！")) {
+            logs = [];
+            curP = null;
+            document.getElementById('pCard').style.display = 'none';
+            renderLogs();
+            alert("已清空所有记录");
+        }
+    }
+
     function openModal(type, index = -1) {
         editIndex = index;
         isModalOpen = true;
         const display = document.getElementById('modalDisplay');
         const title = document.getElementById('modalTitle');
-        
         if(type === 'EDIT') {
             title.innerText = "重新修正盘点数";
             tempVal = logs[index].实数.toString();
         } else {
             title.innerText = "输入盘点实数";
-            tempVal = "0"; // 默认显示0
+            tempVal = "0";
         }
-        
         display.innerText = tempVal;
         document.getElementById('numModal').style.display = 'flex';
-        // 关键：此时坚决不能让 #hiddenScanner 获得焦点
     }
 
-    // 4. 键盘按键逻辑 (最关键的逻辑修改)
     function pressKey(key) {
-        const display = document.getElementById('modalDisplay');
-        
         if (key === 'DEL') {
-            // 删除逻辑
-            if (tempVal.length > 1) {
-                tempVal = tempVal.slice(0, -1);
-            } else {
-                tempVal = "0"; // 删到最后一个，变回0
-            }
+            tempVal = tempVal.length > 1 ? tempVal.slice(0, -1) : "0";
         } else {
-            // 数字逻辑
-            if (tempVal === "0") {
-                tempVal = key; // 如果是0，直接替换
-            } else if (tempVal.length < 9) {
-                tempVal += key; // 累加，限制9位数
-            }
+            tempVal = (tempVal === "0") ? key : tempVal + key;
+            if (tempVal.length > 9) tempVal = tempVal.slice(0, 9);
         }
-        display.innerText = tempVal;
+        document.getElementById('modalDisplay').innerText = tempVal;
     }
 
-    // 5. 保存（内置键盘确定按钮）
     function confirmSave() {
         const finalVal = parseFloat(tempVal) || 0;
-        
         if (editIndex > -1) {
-            // 修改已有记录
             logs[editIndex].实数 = finalVal;
-            // 同步更新主卡片显示（如果是同一条码）
-            if(curP && logs[editIndex].条码 === curP.code) {
-                document.getElementById('vStock').innerText = finalVal;
-            }
+            if(curP && logs[editIndex].条码 === curP.code) document.getElementById('vStock').innerText = finalVal;
         } else {
-            // 新增记录
-            if(!curP) return alert("请先扫码");
-            const newLog = { 
-                "条码": curP.code, 
-                "商品名称": curP.name, 
-                "实数": finalVal,
-                "时间": new Date().toLocaleTimeString() 
-            };
-            logs.unshift(newLog); // 最新在最前
+            if(!curP) return;
+            logs.unshift({ "条码": curP.code, "商品名称": curP.name, "实数": finalVal, "时间": new Date().toLocaleTimeString() });
             document.getElementById('vStock').innerText = finalVal;
         }
-        
         renderLogs();
         closeModals();
     }
 
-    // 6. 渲染列表
     function renderLogs() {
         const container = document.getElementById('logList');
         const history = document.getElementById('historyLog');
-        
-        if(logs.length > 0) {
-            history.style.display = 'flex';
-            history.style.flexDirection = 'column';
-        } else {
-            history.style.display = 'none';
-        }
-        
+        history.style.display = logs.length > 0 ? 'flex' : 'none';
         container.innerHTML = logs.map((l, index) => `
             <div class="log-item" onclick="openModal('EDIT', ${index})">
                 <div style="flex:1; overflow:hidden;">
-                    <span style="font-weight:600; color:#000; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">${l.商品名称}</span>
+                    <span style="font-weight:600; color:#000; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${l.商品名称}</span>
                     <span style="font-size:11px; color:var(--gray)">${l.条码}</span>
                 </div>
                 <div style="text-align:right; margin-left:15px; flex-shrink:0;">
                     <span style="font-size:22px; font-weight:900; color:var(--ios-blue)">${l.实数}</span>
-                    <div style="font-size:10px; color:#ccc; font-weight:bold;">${l.时间}</div>
+                    <div style="font-size:10px; color:#ccc;">${l.时间}</div>
                 </div>
             </div>
         `).join('');
@@ -271,42 +235,30 @@
     function closeModals() {
         document.getElementById('numModal').style.display = 'none';
         isModalOpen = false;
-        tempVal = "0";
         editIndex = -1;
-        // 关闭后，重新恢复扫码聚焦
         forceFocus();
     }
 
-    // 处理页面点击，确保扫码枪聚焦
     function handleBodyClick(event) {
-        // 如果点的是 Modal 内部或者 Modal 开着，不重新聚焦
         if(isModalOpen || event.target.closest('.modal')) return;
         forceFocus();
     }
 
     function forceFocus() {
-        // 坚决防止在 Modal 打开时聚焦
         if (isModalOpen) return;
         const scanner = document.getElementById('hiddenScanner');
-        if (document.activeElement !== scanner) {
-            scanner.focus();
-        }
+        if (document.activeElement !== scanner) scanner.focus();
     }
 
-    // 7. 导出
     function doExport() {
         if(logs.length === 0) return alert("无记录");
         const ws = XLSX.utils.json_to_sheet(logs);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "结果");
-        XLSX.writeFile(wb, `盘点结果_${new Date().toISOString().slice(0,10)}.xlsx`);
+        XLSX.writeFile(wb, `盘点_${new Date().toLocaleDateString()}.xlsx`);
     }
 
-    // 初始化聚焦
-    forceFocus();
-    // iPhone 专用：防止 Safari 点击后失去焦点
-    setInterval(forceFocus, 1000); 
-
+    setInterval(forceFocus, 1000);
 </script>
 </body>
 </html>
